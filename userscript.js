@@ -8,89 +8,92 @@
 // @grant        none
 // ==/UserScript==
 
-(function() {
+(function () {
     'use strict';
+
     let cycleInterval = 30000;
-    let currentAircraftId = null;
-    let cameraInterval = null;
     let cameraList = [];
     let currentIndex = 0;
-    let manuallyPaused;
+    let cameraInterval = null;
+    let currentAircraftId = null;
+    let cycling = false;
 
-function cycleCamera() {
-    function startCameraCycle() {
-        if (!geofs.camera || !geofs.camera.modes) return;
+    function buildCameraList() {
+        const excluded = [2, 3, 4, 5];
+        cameraList = geofs.camera.modes
+            .map((_, i) => i)
+            .filter(i => !excluded.includes(i));
 
-        document.addEventListener("keypress", (e) => {
-            if (e.key === "w" || e.key === "W") {
-                    manuallyPaused = !manuallyPaused;
-                    console.log("Camera cycling manually paused:", manuallyPaused);
-                    if (manuallyPaused == true) {
-                        ui.notification.show("Camera cycling paused.");
-                    } else {
-                        ui.notification.show("Camera cycling resumed.");
-                    }
-            }
-        });
-        
-        const cameraModes = geofs.camera.modes;
-        const excludedIndices = [2, 3, 4, 5];
-        cameraList = [];
-
-        for (let i = 0; i < cameraModes.length; i++) {
-            if (!excludedIndices.includes(i)) {
-                cameraList.push(i);
-            }
-        }
-
-        // Shuffle the camera list
+        // Shuffle
         for (let i = cameraList.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
             [cameraList[i], cameraList[j]] = [cameraList[j], cameraList[i]];
         }
 
-        console.log("Cycling through randomized cameras (excluding 2, 3, 4, 5):", cameraList);
-
         currentIndex = 0;
+    }
+
+    function startCycling() {
+        if (!geofs.camera || !geofs.camera.modes) return;
         if (cameraInterval) clearInterval(cameraInterval);
+        buildCameraList();
         cameraInterval = setInterval(() => {
-            if (!geofs.pause && !manuallyPaused && cameraList.length > 0) {
-                const camIndex = cameraList[currentIndex];
-                geofs.camera.set(camIndex);
-                console.log("Switched to camera:", camIndex);
+            if (!geofs.pause && cycling && cameraList.length > 0) {
+                geofs.camera.set(cameraList[currentIndex]);
+                console.log("Switched to camera:", cameraList[currentIndex]);
                 currentIndex = (currentIndex + 1) % cameraList.length;
             }
         }, cycleInterval);
     }
 
-    // Monitor aircraft changes
-    setInterval(() => {
-        if (geofs.aircraft && geofs.aircraft.instance && geofs.aircraft.instance.id !== currentAircraftId) {
-            currentAircraftId = geofs.aircraft.instance.id;
-            console.log("Aircraft changed. Restarting camera script.");
-            startCameraCycle();
-        }
-    }, 1000);
-
-
-    // Initial load wait
-    const waitForGeoFS = setInterval(() => {
-        if (typeof geofs !== "undefined" && geofs.camera && geofs.camera.modes && geofs.aircraft && geofs.aircraft.instance) {
-            clearInterval(waitForGeoFS);
-            currentAircraftId = geofs.aircraft.instance.id;
-            startCameraCycle();
-        }
-    }, 500);
-};
-function handleWPress (e) {
-    if (e.key === "w" || e.key === "W") {
-        cycleCamera();
-        ui.notification.show("Camera cycling begun.")
-        document.removeEventListener("keypress", handleWPress); 
+    function stopCycling() {
+        cycling = false;
+        if (cameraInterval) clearInterval(cameraInterval);
     }
-};
-document.addEventListener("keypress", handleWPress);
 
+    function toggleCycling() {
+        cycling = !cycling;
+        if (cycling) {
+            ui.notification.show("Camera cycling started.");
+            console.log("Camera cycling started.");
+            startCycling();
+        } else {
+            stopCycling();
+            ui.notification.show("Camera cycling stopped.");
+            console.log("Camera cycling stopped.");
+        }
+    }
+
+    function monitorAircraftChange() {
+        setInterval(() => {
+            if (geofs.aircraft && geofs.aircraft.instance) {
+                let id = geofs.aircraft.instance.id;
+                if (id !== currentAircraftId) {
+                    currentAircraftId = id;
+                    console.log("Stopped cycling due to aircraft change");
+                    stopCycling();
+                }
+            }
+        }, 1000);
+    }
+
+    function init() {
+        const wait = setInterval(() => {
+            if (geofs?.camera?.modes && geofs?.aircraft?.instance) {
+                clearInterval(wait);
+                currentAircraftId = geofs.aircraft.instance.id;
+                monitorAircraftChange();
+                document.addEventListener("keypress", (e) => {
+                    if (e.key.toLowerCase() === "w") {
+                        toggleCycling();
+                    }
+                });
+                console.log("Script running. Press 'W' to toggle.");
+            }
+        }, 500);
+    }
+
+    init();
 })();
 
 
