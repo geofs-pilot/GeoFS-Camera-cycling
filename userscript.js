@@ -25,6 +25,11 @@ function cycleCamera() {
             if (e.key === "w" || e.key === "W") {
                     manuallyPaused = !manuallyPaused;
                     console.log("Camera cycling manually paused:", manuallyPaused);
+                    if (manuallyPaused == true) {
+                        ui.notification.show("Camera cycling paused.");
+                    } else {
+                        ui.notification.show("Camera cycling resumed.");
+                    }
             }
         });
         
@@ -80,6 +85,7 @@ function cycleCamera() {
 function handleWPress (e) {
     if (e.key === "w" || e.key === "W") {
         cycleCamera();
+        ui.notification.show("Camera cycling begun.")
         document.removeEventListener("keypress", handleWPress); 
     }
 };
