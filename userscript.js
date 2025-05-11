@@ -83,8 +83,8 @@
                 clearInterval(wait);
                 currentAircraftId = geofs.aircraft.instance.id;
                 monitorAircraftChange();
-                document.addEventListener("keypress", (e) => {
-                    if (e.key.toLowerCase() === "w") {
+                document.addEventListener("keydown", function (event) {
+                    if (event.key.toLowerCase() === "w"  && !event.ctrlKey && !event.altKey && !event.metaKey) {
                         toggleCycling();
                     }
                 });
