@@ -16,7 +16,7 @@
     let currentIndex = 0;
     let cameraInterval = null;
     let currentAircraftId = null;
-    let cycling = false;
+    globalThis.cycling = false;
 
     function buildCameraList() {
         const excluded = [2, 3, 4, 5];
